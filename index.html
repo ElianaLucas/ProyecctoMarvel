@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marvel App + Firebase</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-4">
+  <h1 class="text-3xl font-bold mb-4">App Marvel con Firebase</h1>
+
+  <link rel="stylesheet" href="estilo.css">
+  <button id="ver-favoritos" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">⭐ Mis Cómics</button>
+
+  <!-- Login -->
+  <form id="login-form" class="space-y-2 mb-6">
+    <h2 class="text-xl font-semibold">Iniciar sesión</h2>
+    <input class="w-full p-2 rounded text-black" type="email" id="email" placeholder="Correo" required />
+    <input class="w-full p-2 rounded text-black" type="password" id="password" placeholder="Contraseña" required />
+    <button class="bg-red-600 px-4 py-2 rounded hover:bg-red-700 w-full" type="submit">Iniciar sesión</button>
+    <div id="error-message" class="text-red-400 mt-2"></div>
+  </form>
+
+  <!-- Registro -->
+  <form id="register-form" class="space-y-2 mb-6">
+    <h2 class="text-xl font-semibold">Registrarse</h2>
+    <input class="w-full p-2 rounded text-black" type="email" id="reg-email" placeholder="Correo nuevo" required />
+    <input class="w-full p-2 rounded text-black" type="password" id="reg-password" placeholder="Contraseña nueva" required />
+    <button class="bg-green-600 px-4 py-2 rounded hover:bg-green-700 w-full" type="submit">Crear cuenta</button>
+    <div id="register-error" class="text-red-400 mt-2"></div>
+  </form>
+
+  <!-- Zona principal -->
+  <div id="home" class="hidden mt-6">
+    <h2 class="text-2xl mb-2">Buscar en Marvel</h2>
+    <div class="flex items-center gap-2 mb-4">
+      <select id="tipo" class="p-2 rounded text-black">
+        <option value="characters">Personajes</option>
+        <option value="comics">Cómics</option>
+        <option value="series">Series</option>
+      </select>
+      <input class="p-2 rounded text-black" type="text" id="busqueda" placeholder="Escribe tu búsqueda..." />
+      <button class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700" id="buscar-btn">Buscar</button>
+      <button class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700" id="logout-btn">Cerrar sesión</button>
+    </div>
+
+    <div id="resultados" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
+
+    <!-- Sección de Favoritos -->
+    <h2 class="text-2xl mt-6 mb-2">⭐ Tus Favoritos</h2>
+    <div id="favoritos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+
+  <!-- CryptoJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDoGN9NS3iRhqla2JgpuUhc2kebY_7J0lY",
+      authDomain: "lucas-tareafinalprimerparcial.firebaseapp.com",
+      projectId: "lucas-tareafinalprimerparcial",
+      storageBucket: "lucas-tareafinalprimerparcial.appspot.com",
+      messagingSenderId: "784833180917",
+      appId: "1:784833180917:web:69af8b7f54077e61f601bc"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    const homeDiv = document.getElementById("home");
+    const logoutBtn = document.getElementById("logout-btn");
+    const errorMessage = document.getElementById("error-message");
+    const registerError = document.getElementById("register-error");
+    const buscarBtn = document.getElementById("buscar-btn");
+    const resultados = document.getElementById("resultados");
+
+    let currentUser = null;
+
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      if (user) {
+        loginForm.classList.add("hidden");
+        registerForm.classList.add("hidden");
+        homeDiv.classList.remove("hidden");
+        resultados.innerHTML = "";
+        errorMessage.textContent = "";
+        registerError.textContent = "";
+        mostrarFavoritos();
+      } else {
+        loginForm.classList.remove("hidden");
+        registerForm.classList.remove("hidden");
+        homeDiv.classList.add("hidden");
+        resultados.innerHTML = "";
+        document.getElementById("favoritos").innerHTML = "";
+      }
+    });
+
+    loginForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => {
+          errorMessage.textContent = "";
+        })
+        .catch(err => {
+          errorMessage.textContent = "Error: " + err.message;
+        });
+    });
+
+    registerForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const email = document.getElementById("reg-email").value;
+      const password = document.getElementById("reg-password").value;
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => {
+          registerError.textContent = "";
+        })
+        .catch(err => {
+          registerError.textContent = "Error: " + err.message;
+        });
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      auth.signOut();
+    });
+
+    function generarHash(ts, privateKey, publicKey) {
+      return CryptoJS.MD5(ts + privateKey + publicKey).toString();
+    }
+
+    buscarBtn.addEventListener("click", () => {
+      const tipo = document.getElementById("tipo").value;
+      const query = document.getElementById("busqueda").value.trim();
+
+      if (!query && tipo !== "series") {
+        resultados.innerHTML = "<p class='text-red-400'>Por favor ingresa un término de búsqueda.</p>";
+        return;
+      }
+
+      const ts = Date.now().toString();
+      const publicKey = "1ef11f3874e9325cdb1600201a7ecdc6";
+      const privateKey = "f019ac886777717927fcd82231b3b948ab6af9a0";
+      const hash = generarHash(ts, privateKey, publicKey);
+
+      let url = "";
+      if (tipo === "characters") {
+        url = `https://gateway.marvel.com/v1/public/characters?nameStartsWith=${query}&ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+      } else if (tipo === "comics") {
+        url = `https://gateway.marvel.com/v1/public/comics?titleStartsWith=${query}&ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+      } else if (tipo === "series") {
+        url = `https://gateway.marvel.com/v1/public/series?limit=20&ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+      }
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.data.results.length) {
+            resultados.innerHTML = "<p class='text-yellow-400'>No se encontraron resultados.</p>";
+            return;
+          }
+
+          resultados.innerHTML = data.data.results.map(item => {
+            const nombre = item.name || item.title;
+            const id = item.id;
+            const tipoActual = tipo;
+            const imagen = item.thumbnail?.path?.includes("image_not_available") ? "" :
+              `<img src="${item.thumbnail.path}.${item.thumbnail.extension}" class="w-32 h-32 object-cover rounded">`;
+
+            return `
+              <div class="bg-gray-800 p-4 rounded shadow hover:bg-gray-700 cursor-pointer" onclick="verDetalle('${tipoActual}', ${id})">
+                ${imagen}
+                <h3 class="mt-2 font-semibold">${nombre}</h3>
+                <button onclick="agregarFavorito(event, '${tipoActual}', ${id}, '${nombre}')"
+                  class="mt-2 bg-yellow-500 text-black px-2 py-1 rounded hover:bg-yellow-400">⭐ Favorito</button>
+              </div>
+            `;
+          }).join("");
+        })
+        .catch(error => {
+          resultados.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+        });
+    });
+
+    function agregarFavorito(e, tipo, id, nombre) {
+      e.stopPropagation();
+      if (!currentUser) return alert("Inicia sesión primero");
+
+      db.collection("usuarios").doc(currentUser.uid).collection("favoritos").doc(`${tipo}_${id}`).set({
+        tipo, id, nombre, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert("Agregado a favoritos");
+        mostrarFavoritos();
+      }).catch(err => {
+        console.error("Error al agregar a favoritos", err);
+      });
+    }
+
+    function eliminarFavorito(docId) {
+      if (!currentUser) return;
+      db.collection("usuarios").doc(currentUser.uid).collection("favoritos").doc(docId)
+        .delete()
+        .then(() => mostrarFavoritos())
+        .catch(err => console.error("Error al eliminar favorito", err));
+    }
+
+    function mostrarFavoritos() {
+      const favDiv = document.getElementById("favoritos");
+      favDiv.innerHTML = "<p class='text-gray-400'>Cargando favoritos...</p>";
+
+      db.collection("usuarios").doc(currentUser.uid).collection("favoritos")
+        .orderBy("timestamp", "desc")
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            favDiv.innerHTML = "<p class='text-yellow-400'>No tienes favoritos aún.</p>";
+            return;
+          }
+
+          favDiv.innerHTML = snapshot.docs.map(doc => {
+            const { tipo, id, nombre } = doc.data();
+            return `
+              <div class="bg-gray-800 p-4 rounded shadow">
+                <h3 class="font-semibold">${nombre}</h3>
+                <p class="text-sm text-gray-400 capitalize">${tipo}</p>
+                <div class="flex gap-2 mt-2">
+                  <button onclick="verDetalle('${tipo}', ${id})" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-500">Ver detalle</button>
+                  <button onclick="eliminarFavorito('${tipo}_${id}')" class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-500">Eliminar</button>
+                </div>
+              </div>
+            `;
+          }).join("");
+        })
+        .catch(err => {
+          favDiv.innerHTML = `<p class="text-red-400">Error al cargar favoritos.</p>`;
+        });
+    }
+
+    function verDetalle(tipo, id) {
+      alert(`Aquí podrías mostrar detalles del ${tipo} con ID: ${id}`);
+    }
+  </script>
+  
+</body>
+</html>

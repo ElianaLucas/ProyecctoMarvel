@@ -1,0 +1,56 @@
+/* Fondo general del cuerpo */
+body {
+  background: linear-gradient(to bottom right, #1f2937, #111827);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Títulos */
+h1, h2 {
+  text-shadow: 1px 1px 2px #00000088;
+}
+
+/* Input y botones extra */
+input:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6aa;
+  transition: all 0.2s ease;
+}
+
+button {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.03);
+}
+
+/* Contenedor de tarjetas (cómics/personajes) */
+#resultados > div, #favoritos > div {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#resultados > div:hover, #favoritos > div:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Alertas de mensaje */
+#error-message, #register-error {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Responsive para móviles */
+@media (max-width: 640px) {
+  body {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+}
