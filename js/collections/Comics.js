@@ -10,7 +10,8 @@ Marvel.Collections.Comics = Backbone.Collection.extend({
     // Usa CryptoJS para generar el hash: md5(ts + privateKey + publicKey)
     const hash = CryptoJS.MD5(ts + privateKey + publicKey).toString();
 
-    this.url = `https://gateway.marvel.com/v1/public/comics?titleStartsWith=${encodeURIComponent(titulo)}&ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+    this.url = `https://gateway.marvel.com/v1/public/comics?titleStartsWith=${encodeURIComponent(titulo)}&ts=
+    ${ts}&apikey=${publicKey}&hash=${hash}`;
 
     this.fetch({
       reset: true,
